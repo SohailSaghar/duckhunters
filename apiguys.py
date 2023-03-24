@@ -11,7 +11,8 @@ anchorage_tz = dateutil.tz.gettz("America/Anchorage")
 
 def parse_api(f):
     data = []
-    csv_reader = csv.reader(f)
+    delimiter = f[0][4]
+    csv_reader = csv.reader(f, delimiter=delimiter)
     headers = csv_reader.__next__()
     for line in csv_reader:
         data_entry = {}
@@ -42,8 +43,8 @@ def main():
         response = requests.post(url, headers=headers)
         if response.status_code != 200:
             raise Exception(f"Bad request return value: {response}")
-        print(response.text.split('\n'))
         data = parse_api(response.text.split('\n'))
+        print(data)
         if len(data) < 3:
             raise Exception(f"Bad data {data}")
         data.reverse()
@@ -63,13 +64,14 @@ def main():
 
 
 if __name__ == '__main__':
-    for i in range(200):
-        time.sleep(60)
+    while True:
         try:
             main()
+            time.sleep(60)
         except Exception as e:
             print(e)
             print("I will try again later :)")
+            time.sleep(2)
 
 
 # now = dateutil.parser.parse("2013/11-07")
