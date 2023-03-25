@@ -3,15 +3,27 @@ import csv
 import json
 import dateutil.parser
 from dateutil.tz import UTC
+import datetime
 import time
 
 
-anchorage_tz = dateutil.tz.gettz("America/Anchorage")
+class Logger:
+    def __init__(self, filename):
+        self.filename = filename
+
+    def log(self, message):
+        with open(self.filename, "a") as f:
+            f.write(datetime.datetime.now().strftime("%Y %m %d - %H:%M:%S \n"))
+            f.write(message)
+            f.write("\n\n")
 
 
-def parse_api(f):
+def parse_api(f, timezone):
     data = []
     delimiter = f[0][4]
+    if delimiter not in ["|", ",", ";"]:
+        response = "\n".join(f)
+        raise Exception(f"Bad delimiter: '{delimiter}'\n{response}")
     csv_reader = csv.reader(f, delimiter=delimiter)
     headers = csv_reader.__next__()
     for line in csv_reader:
@@ -22,7 +34,7 @@ def parse_api(f):
                     pass
                 case "Time":
                     time_wo_zone = dateutil.parser.isoparse(line[headers.index(header)])
-                    time_with_zone = time_wo_zone.replace(tzinfo=anchorage_tz)
+                    time_with_zone = time_wo_zone.replace(tzinfo=timezone)
                     data_entry[header.lower()] = time_with_zone.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
                 case _:
                     data_entry[header.lower()] = line[headers.index(header)]
@@ -30,24 +42,29 @@ def parse_api(f):
     return data
 
 
-def main():
+def main(timezone):
+    # Areas
     areas = ["Eagle River", "Kincaid Park", "Far North Bicentennial Park", "Bear Valley", "Fire Island"]
-    for line in areas:
-        url = f"https://incommodities.io/a?area={line}"
+    # Error and success handling
+    errorsLog = Logger("errors.log")
+    successLog = Logger("success.log")
 
-        payload = {}
+    for area in areas:
+        # Standard post request
+        url = f"https://incommodities.io/a?area={area}"
         headers = {
             "Authorization": "Bearer dd47a765605d473fa89c1510c767697d"
         }
 
         response = requests.post(url, headers=headers)
         if response.status_code != 200:
-            raise Exception(f"Bad request return value: {response}")
-        data = parse_api(response.text.split('\n'))
-        print(data)
+            raise Exception(f"This response is from {area} \nBad request return value: {response.text}")
+        # from csv to json format
+        data = parse_api(response.text.split('\n'), timezone)
         if len(data) < 3:
             raise Exception(f"Bad data {data}")
         data.reverse()
+        print(data)
         jsonob = {
             "area": f"{line}",
             "forecast": data
@@ -64,12 +81,14 @@ def main():
 
 
 if __name__ == '__main__':
+    anchorage_tz = dateutil.tz.gettz("America/Anchorage")
+    errorLog = Logger("errors.log")
     while True:
         try:
-            main()
+            main(anchorage_tz)
             time.sleep(60)
         except Exception as e:
-            print(e)
+            print(str(e).split("\n")[0])
             print("I will try again later :)")
             time.sleep(2)
 
