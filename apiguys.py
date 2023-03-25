@@ -21,7 +21,7 @@ class Logger:
 def parse_api(f, timezone):
     data = []
     delimiter = f[0][4]
-    if delimiter not in ["|", ",", ";"]:
+    if delimiter not in ["|", ",", ";", "🐻", "_"]:
         response = "\n".join(f)
         raise Exception(f"Bad delimiter: '{delimiter}'\n{response}")
     csv_reader = csv.reader(f, delimiter=delimiter)
@@ -55,14 +55,14 @@ def main(timezone):
         headers = {
             "Authorization": "Bearer dd47a765605d473fa89c1510c767697d"
         }
-        response = requests.post(url, headers=headers)
+        response = requests.post(url, headers=headers, timeout=2)
         # Checking for bad response status code. If anything than 200 (OK status code) raise an exception.
         if response.status_code != 200:
-            raise Exception(f"This response is from {area} \nBad request return value: {response.text}")
+            raise Exception(f"This response is from {area}. Bad request return value: {response.text}")
         # from csv to json format
         data = parse_api(response.text.split('\n'), timezone)
         if len(data) < 3:
-            raise Exception(f"This data is from {area}.\nBad data {data}: \n{response.text}")
+            raise Exception(f"This data is from {area}. Bad data {data}: \n{response.text}")
         data.reverse()
         print(data)
         jsonob = {
@@ -91,6 +91,7 @@ if __name__ == '__main__':
             time.sleep(60)
         except Exception as e:
             print(str(e).split("\n")[0])
+            errorLog.log(str(e))
             print("I will try again later :)")
             time.sleep(2)
 
