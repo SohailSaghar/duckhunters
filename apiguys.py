@@ -55,18 +55,18 @@ def main(timezone):
         headers = {
             "Authorization": "Bearer dd47a765605d473fa89c1510c767697d"
         }
-
         response = requests.post(url, headers=headers)
+        # Checking for bad response status code. If anything than 200 (OK status code) raise an exception.
         if response.status_code != 200:
             raise Exception(f"This response is from {area} \nBad request return value: {response.text}")
         # from csv to json format
         data = parse_api(response.text.split('\n'), timezone)
         if len(data) < 3:
-            raise Exception(f"Bad data {data}")
+            raise Exception(f"This data is from {area}.\nBad data {data}: \n{response.text}")
         data.reverse()
         print(data)
         jsonob = {
-            "area": f"{line}",
+            "area": f"{area}",
             "forecast": data
         }
         datafile = json.dumps(jsonob, indent=2)
@@ -78,6 +78,8 @@ def main(timezone):
             'Content-Type': 'application/json'
         }
         requests.request("POST", sendurl, headers=headers, data=payload)
+        # Only log a new request
+        successLog.log(f"This data is from {area}:\n{response.text}")
 
 
 if __name__ == '__main__':
